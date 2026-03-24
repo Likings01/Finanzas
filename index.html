@@ -231,7 +231,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 // ======================================================================
 // CONFIGURACIÓN DE LA API (REEMPLAZA ESTA URL CON LA DE TU APPS SCRIPT)
 // ======================================================================
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyYXcz9uF9H_oiaec9o9OicwvgPio6NW64UZYZ8OvmHLfN2UnFdFBHCq_cpNdint_O-/exec"; 
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbylvI9iklzEGqp-PVuwf6XyeSSnB-8p7FF9_MQoC32C-ADptRCl_lzcO_Xd0Y52H7Qiaw/exec"; 
 
 // ── Presupuesto base ──
 const BUDGET={
@@ -268,21 +268,31 @@ const BUDGET={
 let mesActual='marzo 2026', gastos=[], ingresos={lucas:900000,josefa:1230000,extra:0}, metas=[];
 let barChart, pieChart;
 
-// ── Motor Fetch (A prueba de CORS) ──
+// ── Motor Fetch (Definitivo antibloqueos) ──
 async function api(action, params={}) {
-  const payload = Object.assign({ action }, params);
   try {
-    const res = await fetch(SCRIPT_URL, {
-      method: 'POST',
-      // Al no poner 'headers', el navegador lo envía como un texto simple 
-      // y Google no activa sus alarmas de seguridad CORS.
-      body: JSON.stringify(payload),
-      redirect: "follow" // Esto ayuda a que el navegador siga la respuesta de Google
-    });
-    const data = await res.json();
-    if(data.error) throw new Error(data.error);
-    return data;
+    if (action === "getAll") {
+      // Usamos GET con parámetro en la URL para leer (Inmune a CORS y a pérdida de datos)
+      const res = await fetch(SCRIPT_URL + "?action=getAll");
+      const data = await res.json();
+      if(data.error) throw new Error(data.error);
+      return data;
+    } else {
+      // Usamos POST codificado para GUARDAR (Evita el "preflight" de seguridad)
+      const formData = new URLSearchParams();
+      formData.append("action", action);
+      formData.append("params", JSON.stringify(params));
+      
+      const res = await fetch(SCRIPT_URL, {
+        method: 'POST',
+        body: formData
+      });
+      const data = await res.json();
+      if(data.error) throw new Error(data.error);
+      return data;
+    }
   } catch(e) {
+    console.error("Detalle del error:", e);
     throw new Error("Error de conexión: " + e.message);
   }
 }
