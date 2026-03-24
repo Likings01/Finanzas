@@ -268,27 +268,25 @@ const BUDGET={
 let mesActual='marzo 2026', gastos=[], ingresos={lucas:900000,josefa:1230000,extra:0}, metas=[];
 let barChart, pieChart;
 
-// ── Motor Fetch (Antibloqueos y seguro) ──
+// ── Motor Fetch (TODO POR POST - Infalible) ──
 async function api(action, params={}) {
   try {
-    const cleanUrl = SCRIPT_URL.split('?')[0]; // Limpia si copiaste un ?action extra por error
+    const cleanUrl = SCRIPT_URL.split('?')[0]; 
+    const formData = new URLSearchParams();
+    formData.append("action", action);
+    formData.append("params", JSON.stringify(params));
     
-    if (action === "getAll") {
-      const res = await fetch(cleanUrl + "?action=getAll");
-      const data = await res.json();
-      if(data.error) throw new Error(data.error);
-      return data;
-    } else {
-      const formData = new URLSearchParams();
-      formData.append("action", action);
-      formData.append("params", JSON.stringify(params));
-      const res = await fetch(cleanUrl, { method: 'POST', body: formData });
-      const data = await res.json();
-      if(data.error) throw new Error(data.error);
-      return data;
-    }
+    // Usamos el método que sabemos que te funciona para TODO
+    const res = await fetch(cleanUrl, { 
+      method: 'POST', 
+      body: formData 
+    });
+    
+    const data = await res.json();
+    if(data.error) throw new Error(data.error);
+    return data;
   } catch(e) {
-    console.error("Fetch Error:", e);
+    console.error("Error en conexión:", e);
     throw e;
   }
 }
@@ -298,6 +296,39 @@ async function cargarDatos() {
   setSyncStatus('spin');
   try {
     const data = await api('getAll');
+    
+    // 🔥 DEBUG VISUAL: Presiona F12 y mira la consola. Aquí verás tus datos llegando.
+    console.log("📥 DATOS RECIBIDOS DE GOOGLE:", data);
+    
+    const norm = (arr) => (arr || []).map(obj => {
+      const o = {};
+      for (let k in obj) {
+         if (k) o[String(k).trim().toLowerCase()] = obj[k];
+      }
+      return o;
+    });
+
+    gastos   = norm(data.gastos);
+    metas    = norm(data.metas);
+    ingresos = data.ingresos || ingresos;
+
+    document.getElementById('incLucas').value  = ingresos.lucas || 900000;
+    document.getElementById('incJosefa').value = ingresos.josefa || 1230000;
+    document.getElementById('incExtra').value  = ingresos.extra || 0;
+
+    setSyncStatus('ok');
+    document.getElementById('lastSync').textContent='Sync: '+new Date().toLocaleTimeString('es-CL');
+    
+    renderDashboard(); 
+    renderTx(); 
+    renderMetas();
+    
+  } catch(e) {
+    setSyncStatus('err');
+    toast('Error cargando datos', '❌');
+  }
+  document.getElementById('overlay').classList.add('hidden');
+}
     
     // 🔥 EL NORMALIZADOR EXTREMO 🔥
     // Fuerza a que las palabras "Categoria", "Monto" y "Mes" de Google Sheets 
