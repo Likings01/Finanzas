@@ -300,43 +300,39 @@ async function api(action, params={}) {
     throw e;
   }
 }
-// ── Cargar datos ──
-async function cargarDatos() {
-  setSyncStatus('spin');
+// ── Motor Fetch (Definitivo) ──
+async function api(action, params={}) {
+  const cleanUrl = SCRIPT_URL.split('?')[0]; 
+  
   try {
-    const data = await api('getAll');
-    
-    // 🔥 DEBUG VISUAL: Presiona F12 y mira la consola. Aquí verás tus datos llegando.
-    console.log("📥 DATOS RECIBIDOS DE GOOGLE:", data);
-    
-    const norm = (arr) => (arr || []).map(obj => {
-      const o = {};
-      for (let k in obj) {
-         if (k) o[String(k).trim().toLowerCase()] = obj[k];
+    if (action === "getAll") {
+      // Pedimos datos por GET
+      const res = await fetch(cleanUrl + "?action=getAll");
+      const textResponse = await res.text(); // Leemos el texto puro primero
+      
+      try {
+        const data = JSON.parse(textResponse);
+        if(data.error) throw new Error(data.error);
+        return data;
+      } catch(parseError) {
+        // Si no es JSON, Google mandó una página HTML
+        console.error("Respuesta bloqueada por Google:", textResponse);
+        throw new Error("Permisos denegados. Revisa la configuración de 'Cualquier persona' en Apps Script.");
       }
-      return o;
-    });
-
-    gastos   = norm(data.gastos);
-    metas    = norm(data.metas);
-    ingresos = data.ingresos || ingresos;
-
-    document.getElementById('incLucas').value  = ingresos.lucas || 900000;
-    document.getElementById('incJosefa').value = ingresos.josefa || 1230000;
-    document.getElementById('incExtra').value  = ingresos.extra || 0;
-
-    setSyncStatus('ok');
-    document.getElementById('lastSync').textContent='Sync: '+new Date().toLocaleTimeString('es-CL');
-    
-    renderDashboard(); 
-    renderTx(); 
-    renderMetas();
-    
+    } else {
+      // Guardamos datos por POST
+      const formData = new URLSearchParams();
+      formData.append("action", action);
+      formData.append("params", JSON.stringify(params));
+      
+      const res = await fetch(cleanUrl, { method: 'POST', body: formData });
+      const data = await res.json();
+      if(data.error) throw new Error(data.error);
+      return data;
+    }
   } catch(e) {
-    setSyncStatus('err');
-    toast('Error cargando datos', '❌');
+    throw e;
   }
-  document.getElementById('overlay').classList.add('hidden');
 }
     
     // 🔥 EL NORMALIZADOR EXTREMO 🔥
