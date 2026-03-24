@@ -268,7 +268,7 @@ const BUDGET={
 let mesActual='marzo 2026', gastos=[], ingresos={lucas:900000,josefa:1230000,extra:0}, metas=[];
 let barChart, pieChart;
 
-// ── Motor Fetch (TODO POR POST - Infalible) ──
+// ── Motor Fetch (Antibloqueos y seguro) ──
 async function api(action, params={}) {
   try {
     const cleanUrl = SCRIPT_URL.split('?')[0]; 
@@ -276,21 +276,30 @@ async function api(action, params={}) {
     formData.append("action", action);
     formData.append("params", JSON.stringify(params));
     
-    // Usamos el método que sabemos que te funciona para TODO
     const res = await fetch(cleanUrl, { 
       method: 'POST', 
       body: formData 
     });
     
-    const data = await res.json();
-    if(data.error) throw new Error(data.error);
-    return data;
+    // Leemos la respuesta como texto primero para evitar el Parser Error
+    const textResponse = await res.text();
+    
+    try {
+      // Intentamos transformarlo a JSON
+      const data = JSON.parse(textResponse);
+      if(data.error) throw new Error(data.error);
+      return data;
+    } catch(parseError) {
+      // Si explota aquí, significa que Google envió una página HTML de error
+      console.error("Google devolvió esto en lugar de datos:", textResponse);
+      throw new Error("Error del servidor de Google (Revisa la consola F12)");
+    }
+
   } catch(e) {
     console.error("Error en conexión:", e);
     throw e;
   }
 }
-
 // ── Cargar datos ──
 async function cargarDatos() {
   setSyncStatus('spin');
