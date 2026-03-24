@@ -268,14 +268,16 @@ const BUDGET={
 let mesActual='marzo 2026', gastos=[], ingresos={lucas:900000,josefa:1230000,extra:0}, metas=[];
 let barChart, pieChart;
 
-// ── Motor Fetch (Reemplaza a google.script.run) ──
+// ── Motor Fetch (A prueba de CORS) ──
 async function api(action, params={}) {
   const payload = Object.assign({ action }, params);
   try {
     const res = await fetch(SCRIPT_URL, {
       method: 'POST',
-      headers: { "Content-Type": "text/plain;charset=utf-8" }, // Evita bloqueos CORS
-      body: JSON.stringify(payload)
+      // Al no poner 'headers', el navegador lo envía como un texto simple 
+      // y Google no activa sus alarmas de seguridad CORS.
+      body: JSON.stringify(payload),
+      redirect: "follow" // Esto ayuda a que el navegador siga la respuesta de Google
     });
     const data = await res.json();
     if(data.error) throw new Error(data.error);
@@ -284,7 +286,6 @@ async function api(action, params={}) {
     throw new Error("Error de conexión: " + e.message);
   }
 }
-
 // ── Cargar datos ──
 async function cargarDatos() {
   setSyncStatus('spin');
