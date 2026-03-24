@@ -229,7 +229,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 
 <script>
 // ======================================================================
-// CONFIGURACIÓN DE LA API (REEMPLAZA ESTA URL CON LA DE TU APPS SCRIPT)
+// CONFIGURACIÓN DE LA API (PEGA TU URL AQUÍ ABAJO)
 // ======================================================================
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbylvI9iklzEGqp-PVuwf6XyeSSnB-8p7FF9_MQoC32C-ADptRCl_lzcO_Xd0Y52H7Qiaw/exec"; 
 
@@ -268,48 +268,55 @@ const BUDGET={
 let mesActual='marzo 2026', gastos=[], ingresos={lucas:900000,josefa:1230000,extra:0}, metas=[];
 let barChart, pieChart;
 
-// ── Motor Fetch (Definitivo antibloqueos) ──
+// ── Motor Fetch (Antibloqueos y seguro) ──
 async function api(action, params={}) {
   try {
+    const cleanUrl = SCRIPT_URL.split('?')[0]; // Limpia si copiaste un ?action extra por error
+    
     if (action === "getAll") {
-      // Usamos GET con parámetro en la URL para leer (Inmune a CORS y a pérdida de datos)
-      const res = await fetch(SCRIPT_URL + "?action=getAll");
+      const res = await fetch(cleanUrl + "?action=getAll");
       const data = await res.json();
       if(data.error) throw new Error(data.error);
       return data;
     } else {
-      // Usamos POST codificado para GUARDAR (Evita el "preflight" de seguridad)
       const formData = new URLSearchParams();
       formData.append("action", action);
       formData.append("params", JSON.stringify(params));
-      
-      const res = await fetch(SCRIPT_URL, {
-        method: 'POST',
-        body: formData
-      });
+      const res = await fetch(cleanUrl, { method: 'POST', body: formData });
       const data = await res.json();
       if(data.error) throw new Error(data.error);
       return data;
     }
   } catch(e) {
-    console.error("Detalle del error:", e);
-    throw new Error("Error de conexión: " + e.message);
+    console.error("Fetch Error:", e);
+    throw e;
   }
 }
+
 // ── Cargar datos ──
 async function cargarDatos() {
   setSyncStatus('spin');
   try {
     const data = await api('getAll');
     
-    // Como el Backend limpia todo, asignamos directo
-    gastos   = data.gastos   || [];
-    metas    = data.metas    || [];
+    // 🔥 EL NORMALIZADOR EXTREMO 🔥
+    // Fuerza a que las palabras "Categoria", "Monto" y "Mes" de Google Sheets 
+    // se procesen idénticas sin importar si están en mayúscula, minúscula o con espacios ocultos.
+    const norm = (arr) => (arr || []).map(obj => {
+      const o = {};
+      for (let k in obj) {
+         if (k) o[String(k).trim().toLowerCase()] = obj[k];
+      }
+      return o;
+    });
+
+    gastos   = norm(data.gastos);
+    metas    = norm(data.metas);
     ingresos = data.ingresos || ingresos;
 
-    document.getElementById('incLucas').value  = ingresos.lucas;
-    document.getElementById('incJosefa').value = ingresos.josefa;
-    document.getElementById('incExtra').value  = ingresos.extra||0;
+    document.getElementById('incLucas').value  = ingresos.lucas || 900000;
+    document.getElementById('incJosefa').value = ingresos.josefa || 1230000;
+    document.getElementById('incExtra').value  = ingresos.extra || 0;
 
     setSyncStatus('ok');
     document.getElementById('lastSync').textContent='Sync: '+new Date().toLocaleTimeString('es-CL');
@@ -320,7 +327,7 @@ async function cargarDatos() {
     
   } catch(e) {
     setSyncStatus('err');
-    toast(e.message, '❌');
+    toast('Error: Revisa la consola (F12)', '❌');
   }
   document.getElementById('overlay').classList.add('hidden');
 }
@@ -349,10 +356,14 @@ const allCats=()=>[...BUDGET.fijos,...BUDGET.variables];
 const totalBud=()=>allCats().reduce((s,c)=>s+c.budget,0);
 const totalInc=()=>(ingresos.lucas||0)+(ingresos.josefa||0)+(ingresos.extra||0);
 
-// Busca de forma simple, ya que el Backend limpió los datos
+// Función salvavidas: Convierte cualquier texto numérico raro en un número perfecto
+const cleanVal = (v) => Number(String(v || 0).replace(/[^0-9-]/g, ""));
+
+// Filtrado invencible: Ignora mayúsculas, minúsculas y espacios
 const gastosCat = n => gastos
-  .filter(g => String(g.Mes || '').toLowerCase() === String(mesActual).toLowerCase() && String(g.Categoria || '').toLowerCase() === String(n).toLowerCase())
-  .reduce((s, g) => s + Number(g.Monto || 0), 0);
+  .filter(g => String(g.mes || '').toLowerCase().trim() === String(mesActual).toLowerCase().trim() && 
+               String(g.categoria || '').toLowerCase().trim() === String(n).toLowerCase().trim())
+  .reduce((s, g) => s + cleanVal(g.monto || g.presupuesto), 0);
 
 const totalReal=()=>allCats().reduce((s,c)=>s+gastosCat(c.name),0);
 const fmt=n=>'$'+Math.round(n).toLocaleString('es-CL');
@@ -440,8 +451,8 @@ async function registrarGasto(){
 // ── TX list ──
 function renderTx(){
   const recent = [...gastos]
-    .filter(g => String(g.Mes || '').toLowerCase() === String(mesActual).toLowerCase())
-    .sort((a, b) => new Date(b.Timestamp || b.Fecha || 0) - new Date(a.Timestamp || a.Fecha || 0))
+    .filter(g => String(g.mes || '').toLowerCase().trim() === String(mesActual).toLowerCase().trim())
+    .sort((a, b) => new Date(b.timestamp || b.fecha || 0) - new Date(a.timestamp || a.fecha || 0))
     .slice(0, 10);
 
   if(!recent.length){
@@ -452,14 +463,12 @@ function renderTx(){
   const cat=n=>allCats().find(c=>String(c.name).toLowerCase() === String(n).toLowerCase())||{icon:'💸',bg:'var(--surface3)', name:n};
 
   document.getElementById('txList').innerHTML=recent.map(g=>{
-    const cName = g.Categoria || '—';
+    const cName = g.categoria || '—';
     const c = cat(cName);
-    
-    // Fechas ya vienen estandarizadas desde el Backend
-    const d = g.Fecha ? new Date(g.Fecha + 'T12:00:00').toLocaleDateString('es-CL',{day:'numeric',month:'short'}) : '—';
-    const monto = Number(g.Monto || 0);
+    const d = g.fecha ? new Date(g.fecha + 'T12:00:00').toLocaleDateString('es-CL',{day:'numeric',month:'short'}) : '—';
+    const monto = cleanVal(g.monto || 0);
 
-    return `<div class="tx-item"><div class="tx-ico" style="background:${c.bg}">${c.icon}</div><div class="tx-info"><div class="tx-name">${cName}</div><div class="tx-meta">${d} · ${g.Persona||'—'} · ${g.Metodo||'—'}${g.Descripcion?' · '+g.Descripcion:''}</div></div><div class="tx-amt neg">${fmt(monto)}</div></div>`;
+    return `<div class="tx-item"><div class="tx-ico" style="background:${c.bg}">${c.icon}</div><div class="tx-info"><div class="tx-name">${cName}</div><div class="tx-meta">${d} · ${g.persona||'—'} · ${g.metodo||'—'}${g.descripcion?' · '+g.descripcion:''}</div></div><div class="tx-amt neg">${fmt(monto)}</div></div>`;
   }).join('');
 }
 
@@ -479,17 +488,17 @@ function renderMetas(){
   const emos={'Fondo Emergencia Inicial':'🛡️','Fondo Emergencia Ampliado':'🔒','Prepago Credito BICE':'🚀','Fondo Educacion Bebe':'🎓'};
   if(!metas.length){document.getElementById('metasGrid').innerHTML='<div style="color:var(--text-dim)">Sin metas cargadas</div>';return;}
   document.getElementById('metasGrid').innerHTML=metas.map((m,i)=>{
-    const cur=Number(m.Actual||0),tgt=Number(m.Meta||1),pct=Math.min((cur/tgt)*100,100);
+    const cur=cleanVal(m.actual||0),tgt=cleanVal(m.meta||1),pct=Math.min((cur/tgt)*100,100);
     const rem=tgt-cur,months=rem>0?Math.ceil(rem/497000):0;
-    const nom=m.Nombre||'';
-    return `<div class="meta-card"><div class="meta-emo">${emos[nom]||m.Emoji||'🎯'}</div><div class="meta-title">${nom}</div><div class="meta-desc">${m.Descripcion||''}</div><div class="meta-row"><div class="meta-cur">${fmt(cur)}</div><div class="meta-tgt">de ${fmt(tgt)}</div></div><div class="meta-bg"><div class="meta-fill" style="width:${pct}%"></div></div><div class="meta-pct">${pct.toFixed(1)}% · ${months>0?'~'+months+' meses':'🎉 ¡Meta alcanzada!'}</div><div class="meta-inp"><input type="number" class="fi" id="ab${i}" placeholder="Abonar $"><button class="btn-s" onclick="abonar(${i},'${nom}')">Abonar</button></div></div>`;
+    const nom=m.nombre||'';
+    return `<div class="meta-card"><div class="meta-emo">${emos[nom]||m.emoji||'🎯'}</div><div class="meta-title">${nom}</div><div class="meta-desc">${m.descripcion||''}</div><div class="meta-row"><div class="meta-cur">${fmt(cur)}</div><div class="meta-tgt">de ${fmt(tgt)}</div></div><div class="meta-bg"><div class="meta-fill" style="width:${pct}%"></div></div><div class="meta-pct">${pct.toFixed(1)}% · ${months>0?'~'+months+' meses':'🎉 ¡Meta alcanzada!'}</div><div class="meta-inp"><input type="number" class="fi" id="ab${i}" placeholder="Abonar $"><button class="btn-s" onclick="abonar(${i},'${nom}')">Abonar</button></div></div>`;
   }).join('');
 }
 
 async function abonar(i,nombre){
   const monto=parseFloat(document.getElementById('ab'+i).value);
   if(!monto||monto<=0){toast('Ingresa un monto válido','⚠️');return;}
-  const actual=Number(metas[i].Actual||0)+monto;
+  const actual=cleanVal(metas[i].actual||0)+monto;
   try {
     const r=await api('updateMeta',{nombre,actual});
     if(r&&r.ok){toast(`Abono de ${fmt(monto)} en "${nombre}" ✓`,'🎯');document.getElementById('ab'+i).value='';await cargarDatos();}
