@@ -177,16 +177,17 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         <div class="fg"><label class="fll">Categoría</label>
           <select class="fs" id="txCat" onchange="toggleOtros(this.value)">
             <optgroup label="── FIJOS ──">
-              <option>Arriendo</option><option>Crédito BICE</option><option>Crédito Auto</option>
+              <option>Arriendo</option>
+              <option>Credito Consolidado</option>
               <option>Luz</option><option>Agua</option><option>Gas</option>
               <option>Internet</option><option>Celulares</option><option>Seguros Auto</option>
-              <option>Tarjetas</option><option>Gym</option><option>Psiquiatra</option>
+              <option>Mantencion Santander</option><option>Gym</option>
             </optgroup>
             <optgroup label="── VARIABLES ──">
               <option>Supermercado</option><option>Combustible</option><option>Pasajes</option>
               <option>Bebé</option><option>Perro</option><option>Salida Familiar</option>
               <option>Netflix</option><option>iCloud</option><option>Spotify</option>
-              <option>Barbero</option><option>Imprevistos</option>
+              <option>Barbero</option>
             </optgroup>
             <optgroup label="── OTROS ──">
                 <option value="Otros">Otros (Especificar)</option>
@@ -247,21 +248,19 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 // ══ API CONFIGURATION ════════════════════════════════
 const URL = "https://script.google.com/macros/s/AKfycbylvI9iklzEGqp-PVuwf6XyeSSnB-8p7FF9_MQoC32C-ADptRCl_lzcO_Xd0Y52H7Qiaw/exec"; 
 
-// ══ PRESUPUESTO BASE ══════════════════════════════════
+// ══ PRESUPUESTO BASE (Actualizado) ════════════════════
 const BUDGET={
   fijos:[
     {name:'Arriendo',icon:'🏠',bg:'var(--blue-dim)',budget:600000},
-    {name:'Crédito BICE',icon:'🏦',bg:'var(--red-dim)',budget:282000},
-    {name:'Crédito Auto',icon:'🚗',bg:'var(--red-dim)',budget:222000},
+    {name:'Credito Consolidado',icon:'🏦',bg:'var(--red-dim)',budget:512877},
     {name:'Luz',icon:'💡',bg:'#2a2210',budget:45000},
     {name:'Agua',icon:'💧',bg:'var(--blue-dim)',budget:25000},
     {name:'Gas',icon:'🔥',bg:'#3a2210',budget:20000},
     {name:'Internet',icon:'📡',bg:'var(--blue-dim)',budget:16000},
     {name:'Celulares',icon:'📱',bg:'#2a1e42',budget:13000},
     {name:'Seguros Auto',icon:'🛡️',bg:'var(--green-dim)',budget:50000},
-    {name:'Tarjetas',icon:'💳',bg:'#2a2210',budget:25000},
-    {name:'Gym',icon:'💪',bg:'var(--green-dim)',budget:40000},
-    {name:'Psiquiatra',icon:'🧠',bg:'#2a1e42',budget:95000},
+    {name:'Mantencion Santander',icon:'💳',bg:'#2a2210',budget:5000},
+    {name:'Gym',icon:'💪',bg:'var(--green-dim)',budget:40000}
   ],
   variables:[
     {name:'Supermercado',icon:'🛒',bg:'var(--green-dim)',budget:300000},
@@ -273,8 +272,7 @@ const BUDGET={
     {name:'Netflix',icon:'🎬',bg:'var(--red-dim)',budget:2890},
     {name:'iCloud',icon:'☁️',bg:'var(--blue-dim)',budget:10990},
     {name:'Spotify',icon:'🎵',bg:'var(--green-dim)',budget:6375},
-    {name:'Barbero',icon:'✂️',bg:'#2a2210',budget:22000},
-    {name:'Imprevistos',icon:'⚠️',bg:'#3a2210',budget:20000},
+    {name:'Barbero',icon:'✂️',bg:'#2a2210',budget:22000}
   ]
 };
 
@@ -291,22 +289,17 @@ function obtenerMesTexto(fecha) {
 
 // ══ ACTUALIZAR SELECT DE MESES ════════════════════════
 function actualizarSelectMeses() {
-    // Obtenemos todos los meses únicos que existen en los registros de gastos
     const mesesRegistrados = [...new Set(gastos.map(g => String(g.Mes || g.mes || '').trim().toLowerCase()))].filter(m => m !== "");
-    
-    // Obtenemos el mes actual de hoy, y algunos meses alrededor por si acaso
     const hoy = new Date();
     const mesesBase = [
-        obtenerMesTexto(new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1)), // Mes anterior
-        obtenerMesTexto(hoy), // Mes actual
-        obtenerMesTexto(new Date(hoy.getFullYear(), hoy.getMonth() + 1, 1)) // Mes siguiente
+        obtenerMesTexto(new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1)), 
+        obtenerMesTexto(hoy), 
+        obtenerMesTexto(new Date(hoy.getFullYear(), hoy.getMonth() + 1, 1)) 
     ];
 
-    // Combinamos todos los meses, los formateamos con la primera letra mayúscula y eliminamos duplicados
     let todosLosMeses = [...mesesBase, ...mesesRegistrados.map(m => m.charAt(0).toUpperCase() + m.slice(1))];
     todosLosMeses = [...new Set(todosLosMeses)]; 
     
-    // Ordenamos los meses cronológicamente (aproximación rápida)
     const mesesOrden = {"Enero":1, "Febrero":2, "Marzo":3, "Abril":4, "Mayo":5, "Junio":6, "Julio":7, "Agosto":8, "Septiembre":9, "Octubre":10, "Noviembre":11, "Diciembre":12};
     todosLosMeses.sort((a, b) => {
         const [mesA, anoA] = a.split(" ");
@@ -315,20 +308,16 @@ function actualizarSelectMeses() {
         return mesesOrden[mesA] - mesesOrden[mesB];
     });
 
-    // Llenamos el select
     const select = document.getElementById('mesSelect');
     select.innerHTML = '';
     todosLosMeses.forEach(m => {
         const option = document.createElement('option');
         option.value = m;
         option.textContent = m;
-        if (m.toLowerCase() === mes.toLowerCase()) {
-            option.selected = true;
-        }
+        if (m.toLowerCase() === mes.toLowerCase()) { option.selected = true; }
         select.appendChild(option);
     });
 
-    // Si el mes actual (variable de estado) no estaba en la lista, lo seleccionamos
     if(!todosLosMeses.some(m => m.toLowerCase() === mes.toLowerCase())) {
          mes = document.getElementById('mesSelect').value;
     }
@@ -346,7 +335,6 @@ function toggleOtros(valor) {
 }
 
 // ══ API ═══════════════════════════════════════════════
-// GET — para leer datos
 async function apiGet(params) {
   const qs = Object.entries(params).map(([k,v])=>k+'='+encodeURIComponent(v)).join('&');
   const res = await fetch(URL + '?' + qs, { redirect: 'follow' });
@@ -354,7 +342,6 @@ async function apiGet(params) {
   return JSON.parse(txt);
 }
 
-// POST — para guardar datos
 function apiPost(action, params) {
   const form = new FormData();
   form.append('action', action);
@@ -362,7 +349,7 @@ function apiPost(action, params) {
   return fetch(URL, { method: 'POST', body: form, redirect: 'follow' });
 }
 
-// ══ CARGAR DATOS (solo GET) ════════════════════════════
+// ══ CARGAR DATOS ══════════════════════════════════════
 async function cargarDatos() {
   if (!URL || URL === "AQUI_PEGA_TU_URL_DE_APPS_SCRIPT") { 
       document.getElementById('overlay').classList.add('hidden'); 
@@ -389,7 +376,6 @@ async function cargarDatos() {
   } catch(e) {
     setSyncStatus('err');
     toast('Error al leer datos.','❌');
-    console.error(e);
   }
   document.getElementById('overlay').classList.add('hidden');
 }
@@ -414,25 +400,23 @@ function showTab(id){
 function setMes(v){mes=v;document.getElementById('mesLabel').textContent=v;document.getElementById('mesChart').textContent=v;renderDashboard(); renderTx();}
 
 // ══ HELPERS ═══════════════════════════════════════════
-// Modificamos allCats para incluir dinámicamente las categorías "Otros" que encontremos en los gastos
 const allCats = () => {
     const baseCats = [...BUDGET.fijos, ...BUDGET.variables];
     const catNames = baseCats.map(c => c.name.toLowerCase());
     
-    // Buscar categorías en los gastos que no estén en el presupuesto base
     const categoriasExtra = [];
     gastos.forEach(g => {
         const catName = String(g.Categoria || g.categoria || '').trim();
         if (catName && !catNames.includes(catName.toLowerCase()) && !categoriasExtra.some(c => c.name.toLowerCase() === catName.toLowerCase())) {
+            const esAbono = catName.startsWith('Abono:');
             categoriasExtra.push({
                 name: catName,
-                icon: '📦', // Icono por defecto para otros
-                bg: 'var(--surface3)',
-                budget: 0 // Las categorías extra no tienen presupuesto inicial
+                icon: esAbono ? '🎯' : '📦', // Icono de diana si es abono a meta
+                bg: esAbono ? 'var(--gold-dim)' : 'var(--surface3)',
+                budget: 0 // Abonos extra o metas no tienen presupuesto fijo previo
             });
         }
     });
-    
     return [...baseCats, ...categoriasExtra];
 };
 
@@ -447,17 +431,24 @@ const fmtK     = n  => { const a=Math.abs(n); return(n<0?'-':'')+(a>=1e6?'$'+(a/
 function renderDashboard(){renderCards();renderTabla();renderCharts();}
 
 function renderCards(){
-  const inc=totalInc(),bud=totalBud(),act=totalR(),exc=inc-bud,pct=bud>0?Math.round((act/bud)*100):0;
+  const inc=totalInc(), bud=totalBud(), act=totalR();
+  
+  // Calcular los abonos totales realizados este mes (reconocidos porque empiezan con "Abono:")
+  const abonosMes = gastos.filter(g=>String(g.Mes||g.mes||'').trim().toLowerCase()===mes.toLowerCase() && String(g.Categoria||g.categoria||'').startsWith('Abono:')).reduce((s,g)=>s+Number(g.Monto||g.monto||0),0);
+  
+  // El excedente libre ahora resta los abonos a metas que se han hecho en este mes
+  const exc = inc - bud - abonosMes; 
+  const pct = bud>0 ? Math.round((act/bud)*100) : 0;
+
   document.getElementById('cards').innerHTML=`
     <div class="card gold"><div class="cl">Ingresos Totales</div><div class="cv">${fmtK(inc)}</div><div class="cs">Lucas + Josefa${ingresos.extra>0?' + Extra':''}</div><span class="badge bo">Mes actual</span></div>
     <div class="card red"><div class="cl">Presupuesto Base</div><div class="cv">${fmtK(bud)}</div><div class="cs">Fijos ${fmtK(BUDGET.fijos.reduce((s,c)=>s+c.budget,0))} · Var ${fmtK(BUDGET.variables.reduce((s,c)=>s+c.budget,0))}</div><span class="badge br">Base cero</span></div>
     <div class="card ${act>bud?'red':'blue'}"><div class="cl">Gastado Real</div><div class="cv">${fmtK(act)}</div><div class="cs">${pct}% del presupuesto</div><span class="badge ${act>bud?'br':'bg'}">${act>bud?'⚠ Sobre presupuesto':'✓ Dentro del plan'}</span></div>
-    <div class="card ${exc>=0?'green':'red'}"><div class="cl">Excedente Proyectado</div><div class="cv">${fmtK(inc-bud)}</div><div class="cs">Disponible para metas</div><span class="badge ${exc>=0?'bg':'br'}">${exc>=0?'→ Fondo emergencia':'⚠ Revisar gastos'}</span></div>`;
+    <div class="card ${exc>=0?'green':'red'}"><div class="cl">Excedente Libre</div><div class="cv">${fmtK(exc)}</div><div class="cs">Disp: ${fmtK(inc-bud)} - Abonos: ${fmtK(abonosMes)}</div><span class="badge ${exc>=0?'bg':'br'}">${exc>=0?'→ Ahorro / Imprevistos':'⚠ Ajustar gastos'}</span></div>`;
 }
 
 function renderTabla(){
-  const catsList = allCats(); // Obtenemos todas las categorías, incluyendo las dinámicas
-  
+  const catsList = allCats(); 
   const row=c=>{
     const act=gCat(c.name),diff=c.budget-act,pct=c.budget>0?Math.min((act/c.budget)*100,100):0,ov=act>c.budget;
     return `<div class="tr"><div class="rn"><div class="ri" style="background:${c.bg}">${c.icon}</div>${c.name}</div>
@@ -467,9 +458,8 @@ function renderTabla(){
       <div>${act>0?`<div class="pb"><div class="pf ${ov?'pfr':(pct>80?'pfo':'pfg')}" style="width:${pct}%"></div></div>`:''}</div></div>`;
   };
   
-  // Dividimos las categorías para la tabla
   const fijosList = catsList.filter(c => BUDGET.fijos.some(fc => fc.name === c.name));
-  const variablesList = catsList.filter(c => !fijosList.includes(c)); // Incluye BUDGET.variables Y las nuevas (Otros)
+  const variablesList = catsList.filter(c => !fijosList.includes(c)); 
 
   const tf=fijosList.reduce((s,c)=>s+c.budget,0),ta=fijosList.reduce((s,c)=>s+gCat(c.name),0);
   const tv=variablesList.reduce((s,c)=>s+c.budget,0),tva=variablesList.reduce((s,c)=>s+gCat(c.name),0);
@@ -479,8 +469,8 @@ function renderTabla(){
     <div class="th"><div>Categoría</div><div>Presupuesto</div><div>Real</div><div>Diferencia</div><div>%</div></div>
     <div class="grp">📌 GASTOS FIJOS</div>${fijosList.map(row).join('')}
     <div class="tf"><div class="fl">Subtotal Fijos</div><div class="fv">${fmt(tf)}</div><div class="fv ${ta>0?(ta>tf?'neg':'pos'):'neu'}">${ta>0?fmt(ta):'—'}</div><div class="fv ${ta>0?((tf-ta)>=0?'pos':'neg'):'neu'}">${ta>0?fmt(tf-ta):'—'}</div><div></div></div>
-    <div class="grp">🎲 GASTOS VARIABLES & OTROS</div>${variablesList.map(row).join('')}
-    <div class="tf"><div class="fl">Subtotal Var & Otros</div><div class="fv">${fmt(tv)}</div><div class="fv ${tva>0?(tva>tv?'neg':'pos'):'neu'}">${tva>0?fmt(tva):'—'}</div><div class="fv ${tva>0?((tv-tva)>=0?'pos':'neg'):'neu'}">${tva>0?fmt(tv-tva):'—'}</div><div></div></div>
+    <div class="grp">🎲 GASTOS VARIABLES & ABONOS</div>${variablesList.map(row).join('')}
+    <div class="tf"><div class="fl">Subtotal Var & Abonos</div><div class="fv">${fmt(tv)}</div><div class="fv ${tva>0?(tva>tv?'neg':'pos'):'neu'}">${tva>0?fmt(tva):'—'}</div><div class="fv ${tva>0?((tv-tva)>=0?'pos':'neg'):'neu'}">${tva>0?fmt(tv-tva):'—'}</div><div></div></div>
     <div class="tf" style="background:var(--surface3)"><div class="fl" style="color:var(--gold)">TOTAL</div><div class="fv" style="color:var(--gold)">${fmt(tb)}</div><div class="fv ${tba>0?(tba>tb?'neg':'pos'):'neu'}">${tba>0?fmt(tba):'—'}</div><div class="fv ${tba>0?((tb-tba)>=0?'pos':'neg'):'neu'}">${tba>0?fmt(tb-tba):'—'}</div><div></div></div>`;
 }
 
@@ -490,16 +480,10 @@ function renderCharts(){
   if(barChart)barChart.destroy();
   barChart=new Chart(bC,{type:'bar',data:{labels:['Ingresos','Presupuesto','Real','Excedente'],datasets:[{data:[inc,bud,act,exc],backgroundColor:['rgba(201,168,76,.8)','rgba(91,155,213,.8)','rgba(224,82,82,.8)','rgba(76,175,125,.8)'],borderColor:['#c9a84c','#5b9bd5','#e05252','#4caf7d'],borderWidth:1.5,borderRadius:6}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#8a8278',font:{family:'DM Sans',size:11}}},y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#8a8278',font:{family:'DM Mono',size:10},callback:v=>fmtK(v)}}}}});
   const cats=allCats(),cols=['#c9a84c','#5b9bd5','#4caf7d','#e05252','#a07cd5','#e08c52','#52c8e0','#e0c852','#8ac952','#e05285','#52e0b4','#e08052','#5285e0','#c9a84c','#c95252','#52a07c','#8078c9','#c9a080','#80c9a0','#c98080','#a0c980','#8080c9'];
-  
-  // Asegurar que hay suficientes colores si se añaden muchas categorías "Otros"
   const extendedCols = [...cols, ...Array(Math.max(0, cats.length - cols.length)).fill('#5a5550')];
-
   const pC=document.getElementById('pieChart').getContext('2d');
   if(pieChart)pieChart.destroy();
-  
-  // Para el gráfico de torta, usamos el gasto real (act) en lugar del presupuesto, para que aparezcan los "Otros"
   const chartData = cats.map(c => gCat(c.name));
-  
   pieChart=new Chart(pC,{type:'doughnut',data:{labels:cats.map(c=>c.name),datasets:[{data:chartData,backgroundColor:extendedCols.map(c=>c+'cc'),borderColor:'#1a1916',borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>` ${ctx.label}: ${fmt(ctx.raw)}`}}}}});
 }
 
@@ -516,15 +500,13 @@ async function registrarGasto(){
   if(!fecha){toast('Selecciona una fecha','⚠️');return;}
   if(!URL){toast('Falta la URL de conexión','⚠️');return;}
   
-  // Procesar categoría "Otros"
-  let tipo = 'Variable'; // Por defecto, lo nuevo es variable
+  let tipo = 'Variable'; 
   let presupuestoAsignado = 0;
   
   if (cat === 'Otros') {
       const nuevaCat = document.getElementById('txCatOtros').value.trim();
       if(!nuevaCat) {toast('Especifica el nombre del nuevo gasto','⚠️'); return;}
       cat = nuevaCat;
-      // Convertir la primera letra a mayúscula para estandarizar
       cat = cat.charAt(0).toUpperCase() + cat.slice(1).toLowerCase();
   } else {
       const catObj=allCats().find(c=>c.name===cat)||{};
@@ -534,18 +516,16 @@ async function registrarGasto(){
 
   if(cat==='Salida Familiar'&&gCat('Salida Familiar')+monto>50000) toast('⚠ Superarás el límite de Salida Familiar ($50K)','🔒');
 
-  // Derivar el mes a partir de la fecha ingresada
-  const fechaObj = new Date(fecha + 'T12:00:00'); // T12:00:00 previene problemas de zona horaria
+  const fechaObj = new Date(fecha + 'T12:00:00'); 
   const mesGuardado = obtenerMesTexto(fechaObj);
 
   const btn=document.getElementById('btnReg');
   btn.disabled=true; btn.textContent='Guardando…';
 
   try {
-    // Usamos POST con no-cors para enviar
     await apiPost('addGasto', {
       fecha, 
-      mes: mesGuardado, // Enviamos el mes generado automáticamente
+      mes: mesGuardado, 
       categoria:cat, 
       tipo,
       presupuesto: presupuestoAsignado,
@@ -553,21 +533,18 @@ async function registrarGasto(){
     });
     toast(`${fmt(monto)} en ${cat} guardado ✓`,'✅');
     
-    // Limpiar formulario
     document.getElementById('txMonto').value='';
     document.getElementById('txDesc').value='';
     if(document.getElementById('txCat').value === 'Otros') {
         document.getElementById('txCatOtros').value = '';
     }
     
-    // Si registramos en el mes que estamos viendo, actualizamos de inmediato
     if(mesGuardado.toLowerCase() === mes.toLowerCase()) {
-         setTimeout(cargarDatos, 2000);
+         setTimeout(cargarDatos, 1500);
     } else {
          toast(`Guardado en ${mesGuardado}. Cambia el mes para verlo.`, '📅');
-         setTimeout(cargarDatos, 2000); // Recargamos de todas formas para actualizar el select de meses
+         setTimeout(cargarDatos, 1500); 
     }
-    
   } catch(e){
     toast('Error al guardar','❌');
   }
@@ -579,7 +556,7 @@ function renderTx(){
   const recent=[...gastos].filter(g=>String(g.Mes||g.mes||'').trim().toLowerCase()===mes.toLowerCase())
     .sort((a,b)=>new Date(b.Timestamp||b.timestamp||b.Fecha||b.fecha||0)-new Date(a.Timestamp||a.timestamp||a.Fecha||a.fecha||0)).slice(0,10);
   if(!recent.length){document.getElementById('txList').innerHTML='<div style="color:var(--text-dim);font-size:.79rem;text-align:center;padding:16px 0">Sin movimientos en este mes</div>';return;}
-  const cat=n=>allCats().find(c=>String(c.name).toLowerCase()===String(n).toLowerCase())||{icon:'📦',bg:'var(--surface3)'}; // Icono genérico
+  const cat=n=>allCats().find(c=>String(c.name).toLowerCase()===String(n).toLowerCase())||{icon:'📦',bg:'var(--surface3)'}; 
   document.getElementById('txList').innerHTML=recent.map(g=>{
     const cName = String(g.Categoria||g.categoria||'').trim();
     const c=cat(cName);
@@ -600,7 +577,7 @@ async function guardarIngresos(){
   toast('Ingresos guardados ✓','💰');
 }
 
-// ══ METAS ═════════════════════════════════════════════
+// ══ METAS (Abonar a meta y registrarlo como gasto) ════
 const EMOS={'Fondo Emergencia Inicial':'🛡️','Fondo Emergencia Ampliado':'🔒','Prepago Credito BICE':'🚀','Fondo Educacion Bebe':'🎓'};
 function renderMetas(){
   if(!metas.length){document.getElementById('metasGrid').innerHTML='<div style="color:var(--text-dim);font-size:.83rem">Esperando datos de metas...</div>';return;}
@@ -608,19 +585,47 @@ function renderMetas(){
     const n = m.Nombre||m.nombre||'';
     const cur=Number(m.Actual||m.actual||0),tgt=Number(m.Meta||m.meta||1),pct=Math.min((cur/tgt)*100,100);
     const months=tgt-cur>0?Math.ceil((tgt-cur)/497000):0;
-    return `<div class="mc"><div class="me">${EMOS[n]||m.Emoji||m.emoji||'🎯'}</div><div class="mt">${n}</div><div class="md">${m.Descripcion||m.descripcion||''}</div><div class="mr"><div class="mcu">${fmt(cur)}</div><div class="mta">de ${fmt(tgt)}</div></div><div class="mpb"><div class="mpf" style="width:${pct}%"></div></div><div class="mpc">${pct.toFixed(1)}% · ${months>0?'~'+months+' meses':'🎉 ¡Meta alcanzada!'}</div><div class="mi"><input type="number" class="fi" id="ab${i}" placeholder="Abonar $"><button class="bs" onclick="abonar(${i},'${n}')">Abonar</button></div></div>`;
+    return `<div class="mc"><div class="me">${EMOS[n]||m.Emoji||m.emoji||'🎯'}</div><div class="mt">${n}</div><div class="md">${m.Descripcion||m.descripcion||''}</div><div class="mr"><div class="mcu">${fmt(cur)}</div><div class="mta">de ${fmt(tgt)}</div></div><div class="mpb"><div class="mpf" style="width:${pct}%"></div></div><div class="mpc">${pct.toFixed(1)}% · ${months>0?'~'+months+' meses':'🎉 ¡Meta alcanzada!'}</div><div class="mi"><input type="number" class="fi" id="ab${i}" placeholder="Abonar $"><button class="bs" onclick="abonar(${i},'${n}', this)">Abonar</button></div></div>`;
   }).join('');
 }
 
-async function abonar(i,nombre){
+async function abonar(i, nombre, btn){
   const monto=parseFloat(document.getElementById('ab'+i).value);
   if(!monto||monto<=0){toast('Ingresa un monto válido','⚠️');return;}
+  
+  // Deshabilitar botón para evitar doble envío
+  btn.disabled = true;
+  btn.textContent = '...';
+
   const m = metas[i];
   const actual=Number(m.Actual||m.actual||0)+monto;
-  await apiPost('updateMeta',{nombre,actual});
-  toast(`Abono de ${fmt(monto)} en "${nombre}" ✓`,'🎯');
-  document.getElementById('ab'+i).value='';
-  setTimeout(cargarDatos,2000);
+  
+  try {
+    // 1. Actualiza el progreso de la meta
+    await apiPost('updateMeta',{nombre,actual});
+    
+    // 2. Crea el registro de "Abono a Meta" para que descuente de tu excedente en el mes actual que estás mirando
+    const fechaHoy = new Date().toISOString().split('T')[0];
+    await apiPost('addGasto',{
+        fecha: fechaHoy,
+        mes: mes, // Lo guarda en el mes que tienes seleccionado en el dashboard
+        categoria: 'Abono: ' + nombre,
+        tipo: 'Meta',
+        presupuesto: 0,
+        monto: monto,
+        persona: 'Ambos',
+        metodo: 'Transferencia',
+        descripcion: 'Abono directo a meta financiera'
+    });
+
+    toast(`Abono de ${fmt(monto)} registrado ✓`,'🎯');
+    document.getElementById('ab'+i).value='';
+    setTimeout(cargarDatos, 2000);
+  } catch(e) {
+    toast('Error al abonar','❌');
+    btn.disabled = false;
+    btn.textContent = 'Abonar';
+  }
 }
 
 // ══ TOAST ═════════════════════════════════════════════
@@ -632,10 +637,8 @@ function toast(msg,emoji='✓'){
 
 // ══ INIT ══════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded',()=>{
-  // Establecer fecha de hoy por defecto
   document.getElementById('txFecha').value=new Date().toISOString().split('T')[0];
   
-  // Establecer el mes actual en el state y el label
   mes = obtenerMesTexto(new Date());
   document.getElementById('mesLabel').textContent = mes;
   document.getElementById('mesChart').textContent = mes;
@@ -647,7 +650,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     renderDashboard();
     toast('Falta configurar la URL de Apps Script en el código HTML','⚠️');
   }
-  setInterval(cargarDatos, 60000); // Sincronización automática cada minuto
+  setInterval(cargarDatos, 60000); 
 });
 </script>
 </body>
