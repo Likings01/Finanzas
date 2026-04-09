@@ -16,13 +16,6 @@
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
 
-/* CONFIG BANNER */
-#banner{background:linear-gradient(90deg,#1a1208,#1a1810);border-bottom:2px solid var(--gold-dim);padding:12px 28px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-#banner span{font-size:.82rem;color:var(--text-muted)}#banner strong{color:var(--gold)}
-#urlInput{flex:1;min-width:260px;max-width:520px;background:var(--surface3);border:1px solid var(--gold-dim);border-radius:8px;padding:7px 13px;color:var(--text);font-family:'DM Mono',monospace;font-size:.77rem;outline:none}
-.btn-connect{padding:7px 16px;background:var(--gold);border:none;border-radius:8px;color:#0f0e0c;font-weight:700;font-size:.8rem;cursor:pointer}
-.btn-dismiss{margin-left:auto;background:transparent;border:1px solid var(--border);color:var(--text-muted);padding:5px 11px;border-radius:7px;cursor:pointer;font-size:.75rem}
-
 /* HEADER */
 .header{background:linear-gradient(135deg,#1a1916,#0f0e0c);border-bottom:1px solid var(--border);padding:18px 32px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
 .hbrand{display:flex;align-items:center;gap:12px}
@@ -157,13 +150,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 </head>
 <body>
 
-<div id="banner">
-  <span>⚙️ <strong>Conectar:</strong> Pega la URL de tu Apps Script</span>
-  <input type="text" id="urlInput" placeholder="https://script.google.com/macros/s/XXXXX/exec">
-  <button class="btn-connect" onclick="conectar()">Conectar</button>
-  <button class="btn-dismiss" onclick="document.getElementById('banner').style.display='none'">✕</button>
-</div>
-
 <header class="header">
   <div class="hbrand">
     <div class="hicon">🏠</div>
@@ -246,6 +232,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
           <div class="fg"><label class="fll">Método</label>
             <select class="fs" id="txMetodo" onchange="checkCuotas()">
               <option>Débito</option>
+              <option>Tarjeta (pago inmediato)</option>
               <option>Tarjeta de Crédito</option>
               <option>Transferencia</option>
               <option>Efectivo</option>
@@ -255,7 +242,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 
         <div class="fr" id="divCuotas" style="display:none; margin-top:10px; padding:10px; background:var(--surface3); border-radius:8px; border:1px dashed var(--gold-dim)">
            <div class="fg" style="margin:0"><label class="fll">N° Cuotas</label><input type="number" class="fi" id="txCuotas" value="1" min="1" oninput="calcCuota()"></div>
-           <div class="fg" style="margin:0"><label class="fll">Valor Mensual</label><input type="text" class="fi" id="txValorCuota" disabled placeholder="$0" style="color:var(--gold)"></div>
+           <div class="fg" style="margin:0"><label class="fll">Valor Mensual</label><input type="number" class="fi" id="txValorCuota" placeholder="$0" style="color:var(--gold)"></div>
         </div>
 
         <button class="bp" id="btnReg" onclick="registrarGasto()" style="margin-top:14px">✓ Guardar (Quedará como Pendiente)</button>
@@ -289,6 +276,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 <div class="toast" id="toast"></div>
 
 <script>
+// ══ API CONFIGURATION (AQUÍ VA TU URL DE APPS SCRIPT) ══
+const URL = "https://script.google.com/macros/s/AKfycbylvI9iklzEGqp-PVuwf6XyeSSnB-8p7FF9_MQoC32C-ADptRCl_lzcO_Xd0Y52H7Qiaw/exec"; 
+
 // ══ PRESUPUESTO BASE ══════════════════════════════════
 const BUDGET={
   fijos:[
@@ -318,7 +308,6 @@ const BUDGET={
 };
 
 // ══ STATE ═════════════════════════════════════════════
-let URL = localStorage.getItem('lj_url') || '';
 let mes = obtenerMesTexto(new Date()); 
 let gastos=[], ingresos={lucas:900000,josefa:1230000,extra:0}, metas=[];
 let barChart, pieChart;
@@ -359,7 +348,7 @@ function checkCuotas() {
 function calcCuota() {
     const monto = parseFloat(document.getElementById('txMonto').value) || 0;
     const cuotas = parseInt(document.getElementById('txCuotas').value) || 1;
-    document.getElementById('txValorCuota').value = fmt(monto / Math.max(1, cuotas));
+    document.getElementById('txValorCuota').value = Math.round(monto / Math.max(1, cuotas));
 }
 
 // ══ API ═══════════════════════════════════════════════
@@ -372,17 +361,10 @@ function apiPost(action, params) {
   const form = new FormData(); form.append('action', action); form.append('params', JSON.stringify(params));
   return fetch(URL, { method: 'POST', body: form, redirect: 'follow' });
 }
-function conectar() {
-  const url = document.getElementById('urlInput').value.trim();
-  if (!url.includes('script.google.com')) { toast('URL inválida','⚠️'); return; }
-  URL = url.replace('/macros/u/1/s/', '/macros/s/');
-  localStorage.setItem('lj_url', URL);
-  document.getElementById('banner').style.display = 'none'; toast('Conectando…','🔗'); cargarDatos();
-}
 
 // ══ CARGAR DATOS ══════════════════════════════════════
 async function cargarDatos() {
-  if (!URL) { document.getElementById('overlay').classList.add('hidden'); return; }
+  if (!URL || URL === "AQUI_PEGA_TU_URL_DE_APPS_SCRIPT") { document.getElementById('overlay').classList.add('hidden'); toast('Falta pegar la URL en el código HTML','⚠️'); return; }
   setSyncStatus('spin');
   try {
     const data = await apiGet({ action: 'getAll' });
@@ -409,11 +391,16 @@ function setMes(v){mes=v;document.getElementById('mesLabel').textContent=v;docum
 
 // ══ HELPERS ═══════════════════════════════════════════
 const allCats = () => {
-    const baseCats = [...BUDGET.fijos, ...BUDGET.variables]; const catNames = baseCats.map(c => c.name.toLowerCase());
+    const baseCats = [...BUDGET.fijos, ...BUDGET.variables]; 
+    const catNames = baseCats.map(c => c.name.toLowerCase());
     const extra = [];
-    gastos.forEach(g => {
+    
+    // Filtrar los gastos SOLO por el mes que se está visualizando para buscar categorías "Otros"
+    const gastosMesActual = gastos.filter(g => String(g.Mes||g.mes||'').trim().toLowerCase() === mes.toLowerCase());
+    
+    gastosMesActual.forEach(g => {
         let n = String(g.Categoria || g.categoria || '').trim();
-        if(n.includes('(Cuota')) n = n.split('(Cuota')[0].trim(); // Agrupar cuotas bajo la categoría padre en dashboard
+        if(n.includes('(Cuota')) n = n.split('(Cuota')[0].trim(); 
         if (n && !catNames.includes(n.toLowerCase()) && !extra.some(c => c.name.toLowerCase() === n.toLowerCase())) {
             extra.push({ name: n, icon: n.startsWith('Abono:') ? '🎯' : '📦', bg: n.startsWith('Abono:') ? 'var(--gold-dim)' : 'var(--surface3)', budget: 0 });
         }
@@ -428,6 +415,7 @@ const gCat = n => gastos.filter(g=>{
     return String(g.Mes||g.mes||'').trim().toLowerCase()===mes.toLowerCase() && catG.toLowerCase()===String(n).toLowerCase();
 }).reduce((s,g)=>s+Number(g.Monto||g.monto||0),0);
 const totalR = () => allCats().reduce((s,c)=>s+gCat(c.name),0);
+const getAbonosMes = () => gastos.filter(g=>String(g.Mes||g.mes||'').trim().toLowerCase()===mes.toLowerCase() && String(g.Categoria||g.categoria||'').startsWith('Abono:')).reduce((s,g)=>s+Number(g.Monto||g.monto||0),0);
 const fmt = n => '$'+Math.round(n).toLocaleString('es-CL');
 const fmtK = n => { const a=Math.abs(n); return(n<0?'-':'')+(a>=1e6?'$'+(a/1e6).toFixed(1)+'M':a>=1e3?'$'+Math.round(a/1e3)+'K':'$'+Math.round(a)); };
 
@@ -435,13 +423,18 @@ const fmtK = n => { const a=Math.abs(n); return(n<0?'-':'')+(a>=1e6?'$'+(a/1e6).
 function renderDashboard(){renderCards();renderTabla();renderCharts();}
 function renderCards(){
   const inc=totalInc(), bud=totalBud(), act=totalR();
-  const abonosMes = gastos.filter(g=>String(g.Mes||g.mes||'').trim().toLowerCase()===mes.toLowerCase() && String(g.Categoria||g.categoria||'').startsWith('Abono:')).reduce((s,g)=>s+Number(g.Monto||g.monto||0),0);
-  const exc = inc - bud - abonosMes; const pct = bud>0 ? Math.round((act/bud)*100) : 0;
+  const abonosMes = getAbonosMes();
+  
+  // Castigo al excedente si Gastado Real supera al Presupuesto
+  const baseGasto = Math.max(bud, act); 
+  const exc = inc - baseGasto - abonosMes; 
+  const pct = bud>0 ? Math.round((act/bud)*100) : 0;
+  
   document.getElementById('cards').innerHTML=`
     <div class="card gold"><div class="cl">Ingresos Totales</div><div class="cv">${fmtK(inc)}</div><div class="cs">Lucas + Josefa${ingresos.extra>0?' + Extra':''}</div><span class="badge bo">Mes actual</span></div>
     <div class="card red"><div class="cl">Presupuesto Base</div><div class="cv">${fmtK(bud)}</div><div class="cs">Fijos ${fmtK(BUDGET.fijos.reduce((s,c)=>s+c.budget,0))} · Var ${fmtK(BUDGET.variables.reduce((s,c)=>s+c.budget,0))}</div><span class="badge br">Base cero</span></div>
     <div class="card ${act>bud?'red':'blue'}"><div class="cl">Gastado Real</div><div class="cv">${fmtK(act)}</div><div class="cs">${pct}% del presupuesto</div><span class="badge ${act>bud?'br':'bg'}">${act>bud?'⚠ Sobre presupuesto':'✓ Dentro del plan'}</span></div>
-    <div class="card ${exc>=0?'green':'red'}"><div class="cl">Excedente Libre</div><div class="cv">${fmtK(exc)}</div><div class="cs">Disp: ${fmtK(inc-bud)} - Abonos: ${fmtK(abonosMes)}</div><span class="badge ${exc>=0?'bg':'br'}">${exc>=0?'→ Ahorro / Imprevistos':'⚠ Ajustar gastos'}</span></div>`;
+    <div class="card ${exc>=0?'green':'red'}"><div class="cl">Excedente Libre</div><div class="cv">${fmtK(exc)}</div><div class="cs">Disp: ${fmtK(inc-baseGasto)} - Abonos: ${fmtK(abonosMes)}</div><span class="badge ${exc>=0?'bg':'br'}">${exc>=0?'→ Ahorro / Imprevistos':'⚠ Ajustar gastos'}</span></div>`;
 }
 function renderTabla(){
   const catsList = allCats(); 
@@ -465,7 +458,10 @@ function renderTabla(){
     <div class="tf" style="background:var(--surface3)"><div class="fl" style="color:var(--gold)">TOTAL</div><div class="fv" style="color:var(--gold)">${fmt(tf+tv)}</div><div class="fv ${(ta+tva)>0?((ta+tva)>(tf+tv)?'neg':'pos'):'neu'}">${(ta+tva)>0?fmt(ta+tva):'—'}</div><div class="fv ${(ta+tva)>0?(((tf+tv)-(ta+tva))>=0?'pos':'neg'):'neu'}">${(ta+tva)>0?fmt((tf+tv)-(ta+tva)):'—'}</div><div></div></div>`;
 }
 function renderCharts(){
-  const inc=totalInc(),bud=totalBud(),act=totalR(),exc=Math.max(inc-bud,0);
+  const inc=totalInc(),bud=totalBud(),act=totalR();
+  const abonosMes = getAbonosMes();
+  const exc = Math.max(inc - Math.max(bud, act) - abonosMes, 0);
+  
   const bC=document.getElementById('barChart').getContext('2d'); if(barChart)barChart.destroy();
   barChart=new Chart(bC,{type:'bar',data:{labels:['Ingresos','Presupuesto','Real','Excedente'],datasets:[{data:[inc,bud,act,exc],backgroundColor:['rgba(201,168,76,.8)','rgba(91,155,213,.8)','rgba(224,82,82,.8)','rgba(76,175,125,.8)'],borderColor:['#c9a84c','#5b9bd5','#e05252','#4caf7d'],borderWidth:1.5,borderRadius:6}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#8a8278',font:{family:'DM Sans',size:11}}},y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#8a8278',font:{family:'DM Mono',size:10},callback:v=>fmtK(v)}}}}});
   const cats=allCats(),cols=['#c9a84c','#5b9bd5','#4caf7d','#e05252','#a07cd5','#e08c52','#52c8e0','#e0c852','#8ac952','#e05285','#52e0b4','#e08052','#5285e0','#c9a84c','#c95252','#52a07c','#8078c9','#c9a080','#80c9a0','#c98080','#a0c980','#8080c9'];
@@ -486,7 +482,7 @@ async function registrarGasto(){
   
   if(!monto||monto<=0){toast('Ingresa un monto válido','⚠️');return;}
   if(!fecha){toast('Selecciona una fecha','⚠️');return;}
-  if(!URL){toast('Falta la URL de conexión','⚠️');return;}
+  if(!URL || URL === "AQUI_PEGA_TU_URL_DE_APPS_SCRIPT"){toast('Falta pegar la URL en el código','⚠️');return;}
   
   let tipo = 'Variable'; let presupuestoAsignado = 0;
   if (cat === 'Otros') {
@@ -500,12 +496,20 @@ async function registrarGasto(){
   }
 
   const mesGuardado = obtenerMesTexto(new Date(fecha + 'T12:00:00'));
+  
+  // Truco matemático para que si ingresas el valor de cuota manual, Apps Script (que divide monto/cuotas) lo lea correcto
+  let montoEnvio = monto;
+  if (metod === 'Tarjeta de Crédito') {
+      const valorCuotaManual = parseFloat(document.getElementById('txValorCuota').value) || (monto / Math.max(1, cuotas));
+      montoEnvio = valorCuotaManual * cuotas; 
+  }
+
   const btn=document.getElementById('btnReg'); btn.disabled=true; btn.textContent='Guardando...';
 
   try {
     await apiPost('addGasto', {
       fecha, mes: mesGuardado, categoria:cat, tipo, presupuesto: presupuestoAsignado,
-      monto, persona:pers, metodo:metod, descripcion:desc, cuotas: cuotas
+      monto: montoEnvio, persona:pers, metodo:metod, descripcion:desc, cuotas: cuotas
     });
     toast(cuotas > 1 ? `Guardado en ${cuotas} cuotas ✓` : `${fmt(monto)} guardado ✓`,'✅');
     
@@ -548,7 +552,6 @@ function renderTx(){
     const d=fStr?new Date((String(fStr).includes('T')?fStr:fStr+'T12:00:00')).toLocaleDateString('es-CL',{day:'numeric',month:'short'}):'—';
     const estado = g.estado || g.Estado || 'Pagado';
     
-    // Botón de estado interactivo
     const htmlEstado = estado === 'Pendiente' ? 
       `<button onclick="marcarPagado('${g.timestamp}', this)" class="b-pago">Marcar Pagado</button>` : 
       `<span class="p-ok">Pagado ✓</span>`;
@@ -597,7 +600,15 @@ function toast(msg,emoji='✓'){ const t=document.getElementById('toast'); t.inn
 document.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('txFecha').value=new Date().toISOString().split('T')[0];
   mes = obtenerMesTexto(new Date()); document.getElementById('mesLabel').textContent = mes; document.getElementById('mesChart').textContent = mes;
-  if(URL && URL !== "Ahttps://script.google.com/macros/s/AKfycbylvI9iklzEGqp-PVuwf6XyeSSnB-8p7FF9_MQoC32C-ADptRCl_lzcO_Xd0Y52H7Qiaw/exec"){ cargarDatos(); } else { document.getElementById('overlay').classList.add('hidden'); renderDashboard(); toast('Falta la URL de Apps Script','⚠️'); }
+  
+  if(URL && URL !== "https://script.google.com/macros/s/AKfycbylvI9iklzEGqp-PVuwf6XyeSSnB-8p7FF9_MQoC32C-ADptRCl_lzcO_Xd0Y52H7Qiaw/exec"){ 
+      cargarDatos(); 
+  } else { 
+      document.getElementById('overlay').classList.add('hidden'); 
+      renderDashboard(); 
+      toast('Falta la URL de Apps Script en la línea 206 del código HTML','⚠️'); 
+  }
+  
   setInterval(cargarDatos, 3600000); 
 });
 </script>
