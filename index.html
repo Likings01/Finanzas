@@ -597,16 +597,20 @@ async function abonar(i, nombre, btn){
 
 // ══ TOAST Y START ═════════════════════════════════════
 function toast(msg,emoji='✓'){ const t=document.getElementById('toast'); t.innerHTML=`<span>${emoji}</span> ${msg}`;t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),3500); }
+
 document.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('txFecha').value=new Date().toISOString().split('T')[0];
-  mes = obtenerMesTexto(new Date()); document.getElementById('mesLabel').textContent = mes; document.getElementById('mesChart').textContent = mes;
+  mes = obtenerMesTexto(new Date()); 
+  document.getElementById('mesLabel').textContent = mes; 
+  document.getElementById('mesChart').textContent = mes;
   
-  if(URL && URL !== "https://script.google.com/macros/s/AKfycbylvI9iklzEGqp-PVuwf6XyeSSnB-8p7FF9_MQoC32C-ADptRCl_lzcO_Xd0Y52H7Qiaw/exec"){ 
+  // Ahora simplemente verifica que la variable URL no esté vacía
+  if(URL){ 
       cargarDatos(); 
   } else { 
       document.getElementById('overlay').classList.add('hidden'); 
       renderDashboard(); 
-      toast('Falta la URL de Apps Script en la línea 206 del código HTML','⚠️'); 
+      toast('Falta la URL de Apps Script','⚠️'); 
   }
   
   setInterval(cargarDatos, 3600000); 
