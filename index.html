@@ -97,10 +97,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .bs:hover{border-color:var(--gold-dim);color:var(--gold)}
 
 /* TX */
+#txList{max-height:420px;overflow-y:auto;padding-right:8px} /* SCROLL IMPLEMENTADO AQUÍ */
 .txi{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
 .txi:last-child{border-bottom:none}
 .txic{width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
-.txin{flex:1}.txn{font-size:.82rem;font-weight:500}.txm{font-size:.69rem;color:var(--text-muted);margin-top:1px;display:flex;gap:6px;align-items:center}
+.txin{flex:1}.txn{font-size:.82rem;font-weight:500}.txm{font-size:.69rem;color:var(--text-muted);margin-top:1px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
 .txa{font-family:'DM Mono',monospace;font-size:.84rem;font-weight:600;text-align:right}
 .b-pago{padding:2px 8px;font-size:.6rem;border-radius:12px;border:1px solid var(--gold);color:var(--gold);background:transparent;cursor:pointer;}
 .b-pago:hover{background:var(--gold-dim);color:#fff}
@@ -181,7 +182,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
     <div class="cards-grid" id="cards"></div>
     <div class="charts-grid">
       <div class="cc"><div class="cct">Ingresos vs Gastos</div><div class="ccs">Comparativo · <span id="mesChart">Marzo 2026</span></div><div class="cw"><canvas id="barChart"></canvas></div></div>
-      <div class="cc"><div class="cct">Distribución</div><div class="ccs">Por categoría · base mensual</div><div class="cw"><canvas id="pieChart"></canvas></div></div>
+      <div class="cc"><div class="cct">Distribución</div><div class="ccs">Por categoría (Solo Pagados)</div><div class="cw"><canvas id="pieChart"></canvas></div></div>
     </div>
     <div class="st">Detalle por Categoría</div>
     <div class="ss">Presupuesto vs Real · <span class="pill po">Base cero</span></div>
@@ -249,7 +250,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
       </div>
       
       <div class="fc">
-        <div class="fct">📋 Últimos Movimientos</div>
+        <div class="fct">📋 Movimientos del Mes</div>
         <div id="txList"><div style="color:var(--text-dim);font-size:.8rem;text-align:center;padding:16px 0">Sin datos aún</div></div>
       </div>
     </div>
@@ -310,7 +311,7 @@ const BUDGET={
 // ══ STATE ═════════════════════════════════════════════
 let mes = obtenerMesTexto(new Date()); 
 let gastos=[], metas=[];
-let ingresosConfig = { global: {lucas:900000, josefa:1230000, extra:0} }; // Nuevo formato
+let ingresosConfig = { global: {lucas:900000, josefa:1230000, extra:0} }; 
 let barChart, pieChart;
 
 // ══ FUNCIONES FECHA / UI ══════════════════════════════
@@ -371,7 +372,7 @@ async function cargarDatos() {
     const data = await apiGet({ action: 'getAll' });
     if (data.error) throw new Error(data.error);
     gastos = data.gastos || []; metas = data.metas || []; 
-    ingresosConfig = data.ingresos || ingresosConfig; // Toma los ingresos actualizados
+    ingresosConfig = data.ingresos || ingresosConfig; 
     
     setSyncStatus('ok'); document.getElementById('lastSync').textContent = 'Sync: '+new Date().toLocaleTimeString('es-CL');
     actualizarSelectMeses(); renderIngresosInputs(); renderDashboard(); renderTx(); renderMetas();
@@ -393,7 +394,7 @@ function setMes(v){
     mes=v; 
     document.getElementById('mesLabel').textContent=v; 
     document.getElementById('mesChart').textContent=v;
-    renderIngresosInputs(); // Actualiza las casillas de ingresos al cambiar el mes
+    renderIngresosInputs(); 
     renderDashboard(); 
     renderTx();
 }
@@ -416,12 +417,18 @@ function renderIngresosInputs() {
     document.getElementById('incExtra').value = inc.extra;
 }
 
-// ══ HELPERS GASTOS ════════════════════════════════════
+// ══ HELPERS GASTOS (MODIFICADOS PARA IGNORAR PENDIENTES) ══
 const allCats = () => {
     const baseCats = [...BUDGET.fijos, ...BUDGET.variables]; 
     const catNames = baseCats.map(c => c.name.toLowerCase());
     const extra = [];
-    const gastosMesActual = gastos.filter(g => String(g.Mes||g.mes||'').trim().toLowerCase() === mes.toLowerCase());
+    
+    // Ignora los pendientes al crear categorías nuevas en el dashboard
+    const gastosMesActual = gastos.filter(g => {
+        const estado = String(g.estado || g.Estado || 'Pagado').trim();
+        return String(g.Mes||g.mes||'').trim().toLowerCase() === mes.toLowerCase() && estado !== 'Pendiente';
+    });
+    
     gastosMesActual.forEach(g => {
         let n = String(g.Categoria || g.categoria || '').trim();
         if(n.includes('(Cuota')) n = n.split('(Cuota')[0].trim(); 
@@ -433,13 +440,23 @@ const allCats = () => {
 };
 const totalBud = () => allCats().reduce((s,c)=>s+c.budget,0);
 const totalInc = () => { const inc = obtenerIngresosMes(); return (inc.lucas||0) + (inc.josefa||0) + (inc.extra||0); };
+
+// Ignora los pendientes al sumar el total gastado de cada categoría
 const gCat = n => gastos.filter(g=>{
     let catG = String(g.Categoria||g.categoria||'').trim();
     if(catG.includes('(Cuota')) catG = catG.split('(Cuota')[0].trim();
-    return String(g.Mes||g.mes||'').trim().toLowerCase()===mes.toLowerCase() && catG.toLowerCase()===String(n).toLowerCase();
+    const estado = String(g.estado || g.Estado || 'Pagado').trim();
+    return String(g.Mes||g.mes||'').trim().toLowerCase()===mes.toLowerCase() && catG.toLowerCase()===String(n).toLowerCase() && estado !== 'Pendiente';
 }).reduce((s,g)=>s+Number(g.Monto||g.monto||0),0);
+
 const totalR = () => allCats().reduce((s,c)=>s+gCat(c.name),0);
-const getAbonosMes = () => gastos.filter(g=>String(g.Mes||g.mes||'').trim().toLowerCase()===mes.toLowerCase() && String(g.Categoria||g.categoria||'').startsWith('Abono:')).reduce((s,g)=>s+Number(g.Monto||g.monto||0),0);
+
+// Ignora los abonos pendientes
+const getAbonosMes = () => gastos.filter(g=>{
+    const estado = String(g.estado || g.Estado || 'Pagado').trim();
+    return String(g.Mes||g.mes||'').trim().toLowerCase()===mes.toLowerCase() && String(g.Categoria||g.categoria||'').startsWith('Abono:') && estado !== 'Pendiente';
+}).reduce((s,g)=>s+Number(g.Monto||g.monto||0),0);
+
 const fmt = n => '$'+Math.round(n).toLocaleString('es-CL');
 const fmtK = n => { const a=Math.abs(n); return(n<0?'-':'')+(a>=1e6?'$'+(a/1e6).toFixed(1)+'M':a>=1e3?'$'+Math.round(a/1e3)+'K':'$'+Math.round(a)); };
 
@@ -554,10 +571,11 @@ async function marcarPagado(timestamp, btn) {
     }
 }
 
-// ══ TX LIST ════════════════════════════════════════════
+// ══ TX LIST (AHORA MUESTRA TODOS LOS DEL MES Y TIENE SCROLL) ══
 function renderTx(){
   const recent=[...gastos].filter(g=>String(g.Mes||g.mes||'').trim().toLowerCase()===mes.toLowerCase())
-    .sort((a,b)=>new Date(b.Timestamp||b.timestamp||b.Fecha||b.fecha||0)-new Date(a.Timestamp||a.timestamp||a.Fecha||a.fecha||0)).slice(0,10);
+    .sort((a,b)=>new Date(b.Timestamp||b.timestamp||b.Fecha||b.fecha||0)-new Date(a.Timestamp||a.timestamp||a.Fecha||a.fecha||0)); // Ya no se cortan a los primeros 10
+    
   if(!recent.length){document.getElementById('txList').innerHTML='<div style="color:var(--text-dim);font-size:.79rem;text-align:center;padding:16px 0">Sin movimientos en este mes</div>';return;}
   
   const catFunc = n => {
@@ -638,7 +656,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   } else { 
       document.getElementById('overlay').classList.add('hidden'); 
       renderDashboard(); 
-      toast('Falta pegar la URL de Apps Script en la línea 205','⚠️'); 
+      toast('Falta pegar la URL de Apps Script en la línea 208','⚠️'); 
   }
   
   setInterval(cargarDatos, 3600000); 
